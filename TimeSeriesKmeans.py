@@ -4,24 +4,24 @@ from tslearn.barycenters import dtw_barycenter_averaging
 
 class TimeSeriesKmeans():
     
-    def __init__ (self, k_clusters, max_iter = 100, centroids = [],metric = 'dtw', method = 'barycenter'):
+    def __init__ (self, k_clusters, max_iter = 100, centroids = [], metric = 'dtw', method = 'barycenter'):
         self.k_clusters = k_clusters
         self.max_iter = max_iter
         self.centroids = centroids
         self.metric = metric # 'euclidean', 'dtw', 'fdtw'
         self.method = method
 
+    # returns the euclidean average shapelet of a 2d array
+    def _euclidean_average_shapelet(self, X) -> np.array:
+        return np.mean(np.array(X), axis = 0)
+
+    # interpolates each instance to the mean length, and returns the euclidean average shapelet
     def _interpolated_average_shapelet(self, X) -> np.array:
-        shapelet = []
         mean_length = functions['int_avg']([len(arr) for arr in X])
-        interpolated_candidates = [functions['interpolate'](arr, mean_length) for arr in X]
-        for i in range(mean_length):
-            ith = []
-            for n in range(len(X)):
-                ith.append(interpolated_candidates[n][i])
-            shapelet.append(functions['avg'](ith))
-        return np.array(shapelet)
+        interpolated_candidates = np.array([functions['interpolate'](arr, mean_length) for arr in X])
+        return np.mean(np.array(interpolated_candidates), axis = 0)
     
+    # implements tslearn's barycenter averaging - default parameters
     def _barycenter_average_shapelet(self, X, barycenter_size = None, init_barycenter = None, max_iter = 30, tol=1e-05, weights=None, metric_params=None, verbose=False,n_init=1) -> np.array:
         return dtw_barycenter_averaging(X, barycenter_size=barycenter_size, init_barycenter=init_barycenter, max_iter=max_iter, tol=tol, weights=weights, metric_params=metric_params, verbose=verbose,n_init=n_init)
         
@@ -53,8 +53,10 @@ class TimeSeriesKmeans():
                     cluster.append(X[i])
             if self.method == 'barycenter':
                new_centroids.append(self._barycenter_average_shapelet(cluster))
-            if self.method == 'interpolate':
+            elif self.method == 'interpolate':
                 new_centroids.append(self._interpolated_average_shapelet(cluster))
+            elif self.method == 'euclidean':
+                new_centroids.append(self._euclidean_average_shapelet(cluster))
         return new_centroids
 
     # returns True if each centroid has not changed upon centroid update
@@ -108,4 +110,3 @@ class TimeSeriesKmeans():
         self.inertia = min(global_costs)
         self.clusters = global_costs[self.inertia][0]
         self.centroids = global_costs[self.inertia][1]
-
